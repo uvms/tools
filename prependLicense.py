@@ -19,23 +19,27 @@ templateHeader3 += " */\n"
 
 templateHeaders = [templateHeader1, templateHeader2, templateHeader3]
 
-def getProjectRoot():
-	if len(sys.argv) > 1:
-		print("Root path specified")
-		rootDir = r'%s' % (sys.argv[1])
-		return rootDir
-	else:
-		print("No root path specified. Using current directory")
-		return os.getcwd()
+rootDir = ''
+licenseTextFile = ''
+for i in range(1, len(sys.argv), 2):
+	arg = sys.argv[i]
+	print([i, arg])
+	if arg.startswith('-r'):
+		rootDir = sys.argv[i+1]
+		print(rootDir)
+	if arg.startswith('-l'):
+		licenseTextFile = sys.argv[i+1]
+		print(licenseTextFile)
 
-def readLicenseText(rootDir):
-	if len(sys.argv) == 3:
-		print("License text file specified")
-		licenseTextFile = r'%s' % (sys.argv[2])
-	else:
-		print("No license text file specified. Assuming it is located in project root")
-		licenseTextFile = r'%s\%s' % (rootDir, 'licenseText.txt')
-	
+if rootDir == '':
+	print("No root path specified. Using current directory")
+	rootDir = os.getcwd()
+
+if licenseTextFile == '':
+	print("No license text file specified. Assuming it is located in project root")
+	licenseTextFile = r'%s\%s' % (rootDir, 'licenseText.txt')
+
+def readLicenseText(licenseTextFile):
 	try:
 		with open(licenseTextFile, 'r') as license:
 			return license.read();
@@ -47,23 +51,40 @@ def prependLicense(rootDir, licenseText):
 	for subdir, dirs, files in os.walk(rootDir):
 		for file in files:
 			if file.endswith('.java'):
-				fileToSearch = os.path.join(subdir, file)
-				with open(fileToSearch, 'r') as original:
-					data = original.read()
-					if data.startswith(licenseText):
-						print('%s already contains license text' % fileToSearch)
-						continue
-					else:
-						for templateHeader in templateHeaders:
-							if data.startswith(templateHeader):
-								print('%s starts with template header. Removing it.' % fileToSearch)
-								data = data.replace(templateHeader, '')
-					if '@author' in data:
-						print('%s contains @author tag. Removing it.' % fileToSearch)
-						data = re.sub('\s*\*\s*@author[a-zA-Z\s]*', '',data)
-				with open(fileToSearch, 'w') as modified:
-					modified.write(licenseText + '\n' + data)
+				prependJava(subdir, file)
+			if file.endswith('.xsd') or file.endswith('.wsdl'):
+				prependXML(subdir, file)
 
-rootDir = getProjectRoot()
-licenseText = readLicenseText(rootDir)
+def prependJava(subdir, file):
+	fileToSearch = os.path.join(subdir, file)
+	with open(fileToSearch, 'r') as original:
+		data = original.read()
+		data = data.strip()
+		if data.startswith('/*\n' + licenseText + '\n */\n'):
+			print('%s already contains license text' % fileToSearch)
+			return
+		else:
+			for templateHeader in templateHeaders:
+				if data.startswith(templateHeader):
+					print('%s starts with template header. Removing it.' % fileToSearch)
+					data = data.replace(templateHeader, '')
+		if '@author' in data:
+			print('%s contains @author tag. Removing it.' % fileToSearch)
+			data = re.sub('\s*\*\s*@author[a-zA-Z\s]*', '',data)
+		with open(fileToSearch, 'w') as modified:
+			modified.write('/*\n' + licenseText + '\n */\n' + data)
+
+def prependXML(subdir, file):
+	fileToSearch = os.path.join(subdir, file)
+	print('Looking at %s' % (fileToSearch))
+	with open(fileToSearch, 'r') as original:
+		data = original.read()
+		data = data.strip()
+		if data.startswith('<!--\n' + licenseText + '\n-->\n'):
+			print('%s already contains license text' % fileToSearch)
+			return
+		with open(fileToSearch, 'w') as modified:
+			modified.write('<!--\n' + licenseText + '\n-->\n' + data)
+
+licenseText = readLicenseText(licenseTextFile)
 prependLicense(rootDir, licenseText)
