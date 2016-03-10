@@ -19,17 +19,41 @@ templateHeader3 += " */\n"
 
 templateHeaders = [templateHeader1, templateHeader2, templateHeader3]
 
+cStyleFiles = ['java', 'js', 'css']
+xmlStyleFiles = ['xsd', 'wsdl', 'html', 'xml']
+
+argList = {'-r': '-r <path> Root directory of search','-l': '-l <path> Text file containing license text', '-a': 'Do not break before performing search and prepend', '-c': 'Ignore C style files %s'%(cStyleFiles), '-x': 'Ignore XML style files %s'%(xmlStyleFiles), '-h': 'Display this help', '-help': 'Display this help'}
+
 rootDir = ''
 licenseTextFile = ''
-for i in range(1, len(sys.argv), 2):
+auto = False
+doCStyle = True
+doXMLStyle = True
+for i in range(1, len(sys.argv)):
 	arg = sys.argv[i]
-	print([i, arg])
-	if arg.startswith('-r'):
+	if not arg.startswith('-'):
+		continue
+
+	if arg not in argList.keys():
+		print("Argument not recognized: %s\nValid arguments are: %s" % (arg, argList.keys()))
+		sys.exit(-1)
+
+	if arg == '-r':
 		rootDir = sys.argv[i+1]
-		print(rootDir)
-	if arg.startswith('-l'):
+	if arg == '-l':
 		licenseTextFile = sys.argv[i+1]
-		print(licenseTextFile)
+	if arg == '-a':
+		auto = True
+	if arg == '-c':
+		doCStyle = False
+	if arg == '-x':
+		doXMLStyle = False
+	if arg == '-h' or arg == '-help':
+		print("Usage: py prependLicense.py [options]")
+		for key in argList.keys():
+			print('%s\t%s' % (key, argList[key]))
+		print('Example: py prependLicense.py -r "c:\dev\modules" -l "c:\dev\license.txt" -x -a')
+		sys.exit(0)
 
 if rootDir == '':
 	print("No root path specified. Using current directory")
@@ -50,12 +74,15 @@ def readLicenseText(licenseTextFile):
 def prependLicense(rootDir, licenseText):
 	for subdir, dirs, files in os.walk(rootDir):
 		for file in files:
-			if file.endswith('.java'):
-				prependJava(subdir, file)
-			if file.endswith('.xsd') or file.endswith('.wsdl'):
-				prependXML(subdir, file)
+			if '.' in file:
+				parts = file.split('.');
+				end = parts[len(parts) - 1]
+				if end in cStyleFiles and doCStyle:
+					prependCStyleComment(subdir, file)
+				elif end in xmlStyleFiles and doXMLStyle:
+					prependXMLStyleComment(subdir, file)
 
-def prependJava(subdir, file):
+def prependCStyleComment(subdir, file):
 	fileToSearch = os.path.join(subdir, file)
 	with open(fileToSearch, 'r') as original:
 		data = original.read()
@@ -74,9 +101,8 @@ def prependJava(subdir, file):
 		with open(fileToSearch, 'w') as modified:
 			modified.write('/*\n' + licenseText + '\n */\n' + data)
 
-def prependXML(subdir, file):
+def prependXMLStyleComment(subdir, file):
 	fileToSearch = os.path.join(subdir, file)
-	print('Looking at %s' % (fileToSearch))
 	with open(fileToSearch, 'r') as original:
 		data = original.read()
 		data = data.strip()
@@ -85,6 +111,16 @@ def prependXML(subdir, file):
 			return
 		with open(fileToSearch, 'w') as modified:
 			modified.write('<!--\n' + licenseText + '\n-->\n' + data)
+
+print('Root directory for replace is %s' % (rootDir))
+print('The text contained in %s will be prepended' % (licenseTextFile))
+print('The following file types will be prepended:')
+if doXMLStyle:
+	print(xmlStyleFiles)
+if doCStyle:
+	print(cStyleFiles)
+if not auto:
+	input("Press Enter to continue...")
 
 licenseText = readLicenseText(licenseTextFile)
 prependLicense(rootDir, licenseText)
