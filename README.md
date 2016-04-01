@@ -19,8 +19,14 @@ Example: py prependLicense.py -r "c:\dev\modules" -l "c:\dev\license.txt" -x -a
 ## release.py
 This script releases the following modules: hav-vessel-proxy, eu-vessel-proxy, twostage, sweagencyemail, siriusone, naf, flux, email, ais, rules-dbaccess, movement-dbaccess, mobileterminal-dbaccess, exchange-dbaccess, audit-dbaccess, asset-dbaccess, config-dbaccess, rules, movement, mobileterminal, exchange, audit, asset, config, uvms-longpolling, uvms-commons, uvms-config, usm4uvms, rules-model, movement-model, mobileterminal-model, exchange-model, audit-model, asset-model, config-model
 
-Most common usage on Windows would be: py release.py -ruvms-VERSION-SPRINT -b -p
-Most common usage on Linux/OSX would be: py release.py -ruvms-VERSION-SPRINT -b -p -c~/
+Most common usage on Windows would be:
+```
+py release.py -ruvms-VERSION-SPRINT -b -p
+```
+Most common usage on Linux/OSX would be:
+```
+py release.py -ruvms-VERSION-SPRINT -b -p -c~/
+```
 
 ```
 Usage: py release.py -rreleaseName [-c./] [-d] [-p] [-j8] [-s] [-m"module1 module2 ... moduleN"] [-b] [-vx.y.z] [-na.b.c-SNAPSHOT]
