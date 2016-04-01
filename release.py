@@ -307,9 +307,13 @@ def copy(paths):
 
 def clean():
     newpath = r'%s/%s' % (checkOutRoot, release)
-    shutil.rmtree(newpath)
+    shutil.rmtree(newpath, onerror=del_rw)
     tempPath = r'%s/%s' % (checkOutRoot, tempDevDir)
-    shutil.rmtree(tempPath)
+    shutil.rmtree(tempPath, onerror=del_rw)
+
+def del_rw(action, name, exc):
+    os.chmod(name, stat.S_IWRITE)
+    os.remove(name)
 
 def runSubProcess(command, shell, path, stage):
     process = subprocess.Popen(command, shell=shell)
