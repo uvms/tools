@@ -317,9 +317,6 @@ def runSubProcess(command, shell, path, stage):
     if process.returncode != 0:
         externalError(process, path, stage)
 
-merge()
-sys.exit(0)
-
 if dryRun:
     print("Dry run!")
     checkOut(svnBranch, release)
