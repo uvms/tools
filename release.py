@@ -25,8 +25,8 @@ step = '1-models.AssetModule'
 currentStep = step
 validateBuild = False
 
-user = 'USER'
-password = 'PASSWORD'
+user = 'uvms'
+password = 'Uvmspa55word'
 
 gitHubBase = "https://%s:%s@github.com/UnionVMS/UVMS-" % (user, password)
 
@@ -35,9 +35,9 @@ unorderedSteps = {
     '2-libs': ['UVMSConfigLibrary', 'UVMSLongPollingLibrary', 'USM4UVMSLibrary'],
     '3-apps': ['ConfigModule', 'AssetModule', 'AuditModule', 'ExchangeModule', 'RulesModule', 'MovementModule', 'MobileTerminalModule'],
     '4-db': ['ConfigModule', 'AssetModule', 'AuditModule', 'ExchangeModule', 'RulesModule', 'MovementModule', 'MobileTerminalModule'],
-    '5-proxies': ['AssetModule-PROXY-EU', 'AssetModule-PROXY-HAV']
-    #'6-ra': ['Exchange/PLUGIN/ais/ais-ra'],
-    #'7-plugins': ['ais', 'email', 'flux', 'naf', 'siriusone', 'swagencyemail', 'twostage'],
+    '5-proxies': ['AssetModule-PROXY-EU', 'AssetModule-PROXY-HAV'],
+    '6-ra': ['AIS'],
+    '7-plugins': ['AIS', 'Email', 'FLUX', 'NAF', 'SiriusOne', 'SWAgencyEmail', 'TwoStage']
     #'8-frontend': ['unionvms-web']
 }
 steps = OrderedDict(sorted(unorderedSteps.items(), key=lambda t: t[0]))
@@ -145,15 +145,18 @@ def updatePoms(path):
         tree.write(path)
 
 def updateLogback(path, logbackLocation):
-    print("Updating logback")
-    path = path + logbackLocation
-    tree = ET.parse(path)
-    root = tree.getroot()
-    for rootTag in root.iter('root'):
-        if rootTag.get('level') != 'INFO':
-            print("Setting log level in %s" % (path))
-            rootTag.set('level', 'INFO')
-    tree.write(path)
+    try:
+        print("Updating logback")
+        path = path + logbackLocation
+        tree = ET.parse(path)
+        root = tree.getroot()
+        for rootTag in root.iter('root'):
+            if rootTag.get('level') != 'INFO':
+                print("Setting log level in %s" % (path))
+                rootTag.set('level', 'INFO')
+        tree.write(path)
+    except FileNotFoundError as e:
+        print("No logback.xml found at " + path + logbackLocation)
 
 def generateSources(path):
     print("Generating from WSDL")
@@ -229,16 +232,16 @@ def releaseProxy(module):
     return coPath
 
 def releasePlugin(module):
-    svnPath = '%s/Modules/Exchange/PLUGIN/%s' % (svnDev, module)
+    repoPath = '%s%s-PLUGIN.git' % (gitHubBase, module)
     coPath = r'%s/%s/plugins/%s' % (checkOutRoot, release, module)
-    releaseGeneric(svnPath, coPath)
+    releaseGeneric(repoPath, coPath)
     updateLogback(coPath, '/service/src/main/resources/logback.xml')
     return coPath
 
 def releaseRa(module):
-    svnPath = '%s/Modules/%s' % (svnDev, module)
+    repoPath = '%s%s-RESOURCE-ADAPTER.git' % (gitHubBase, module)
     coPath = r'%s/%s/ra/%s' % (checkOutRoot, release, module)
-    releaseGeneric(svnPath, coPath)
+    releaseGeneric(repoPath, coPath)
     return coPath
 
 def releaseFrontend(module):
