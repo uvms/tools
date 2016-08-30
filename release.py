@@ -26,8 +26,8 @@ step = '1-models.AssetModule'
 currentStep = step
 validateBuild = False
 
-user = 'uvms'
-password = 'Uvmspa55word'
+user = ''
+password = ''
 
 gitHubBase = "https://%s:%s@github.com/UnionVMS/UVMS-" % (user, password)
 
