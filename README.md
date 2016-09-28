@@ -21,26 +21,18 @@ This script releases the following modules: hav-vessel-proxy, eu-vessel-proxy, t
 
 Most common usage on Windows would be:
 ```
-py release.py -ruvms-VERSION-SPRINT -b -p
+py release.py -ruvms-VERSION-SPRINT
 ```
 Most common usage on Linux/OSX would be:
 ```
-py release.py -ruvms-VERSION-SPRINT -b -p -c~/
+py release.py -ruvms-VERSION-SPRINT -c~/
 ```
 
 ```
-Usage: py release.py -rreleaseName [-c./] [-d] [-p] [-j8] [-s] [-m"module1 module2 ... moduleN"] [-b] [-vx.y.z] [-na.b.c-SNAPSHOT]
+Usage: py release.py -rreleaseName 
 -r Release name or version for branching and checkout dir.
--d Dry run, only checkout, prepare and rollback run. Only works on existing branch.
--p Paranoia flag. Must be set to actually perform anything. If not set, svn revert and svn update will be run at the end.
--j8 If present, javadoc lint errors are ignored.
--m Module list, format is "module1 module2 ... moduleN". If left out, all modules are released.
--e Plugin list, format is "plugin1 plugin2 ... pluginN". If left out, all plugins are released.
--x Proxy list, format is "module/PROXY/proxy1 module/PROXY/proxy2 ... module/PROXY/proxyN". If left out, all plugins are released.
--l Library list, format is "library1 library2 ... libraryN". If left out, all libraries are released.
--c Check out root dir. Defaults to "C:".
--s Do not replace SNAPSHOT versions with matching release version. If set, Maven will ask for versions during prepare step.
--b Maven prepare batch, non interactive prepare. This will force the use of the next version.
--v Release version.
--n Next SNAPSHOT version.
+-s Starting step
+-c Check out root, ie ~/ or c:\temp
+-v Validate build
+-d date limit, format is YYMMDD, ie 160930
 ```

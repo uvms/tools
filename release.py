@@ -8,6 +8,9 @@ import getpass
 import time
 import stat
 import json
+from datetime import timedelta
+from datetime import datetime
+from datetime import timezone
 from collections import OrderedDict
 startTime = time.time()
 
@@ -25,6 +28,7 @@ tempDevDir = 'temp-dev'
 step = '1-models.AssetModule'
 currentStep = step
 validateBuild = False
+dateLimit = datetime.now(timezone.utc) - timedelta(days=21)
 
 user = ''
 password = ''
@@ -32,7 +36,7 @@ password = ''
 gitHubBase = "https://%s:%s@github.com/UnionVMS/UVMS-" % (user, password)
 
 unorderedSteps = {
-    '1-models': ['AssetModule', 'ConfigModule', 'AuditModule', 'ExchangeModule', 'RulesModule', 'MovementModule', 'MobileTerminalModule'],
+    '1-models': ['AssetModule'], 'ConfigModule', 'AuditModule', 'ExchangeModule', 'RulesModule', 'MovementModule', 'MobileTerminalModule'],
     '2-libs': ['UVMSConfigLibrary', 'UVMSLongPollingLibrary', 'USM4UVMSLibrary'],
     '3-apps': ['ConfigModule', 'AssetModule', 'AuditModule', 'ExchangeModule', 'RulesModule', 'MovementModule', 'MobileTerminalModule'],
     '4-db': ['ConfigModule', 'AssetModule', 'AuditModule', 'ExchangeModule', 'RulesModule', 'MovementModule', 'MobileTerminalModule'],
@@ -52,6 +56,8 @@ for arg in sys.argv:
         step = arg.replace('-s', '', 1)
     if arg.startswith('-v'):
         validateBuild = True
+    if arg.startswith('-d'):
+        dateLimit = datetime.strptime(arg.replace('-d', '', 1) + ' +0000', '%y%m%d %z')
 
 svnBranch = 'https://webgate.ec.europa.eu/CITnet/svn/UNIONVMS/branches/releases/%s' % (release)
 
@@ -81,13 +87,20 @@ def checkOut(repo, checkOutPath):
     print('Checking out %s to %s' % (repo, checkOutPath))
     runSubProcess(['git', 'clone', repo, checkOutPath], False, '', 'checkout')
     runSubProcess(['git', 'checkout', '-b', release], False, '', 'checkout')
-    #runSubProcess(['git', 'push', 'origin', release], False, '', 'checkout')
     print('Check out done')
 
 def commit(repo, message):
     print('Commiting')
-    #runSubProcess(['git', 'reset'], False, repo, 'reset')
     runSubProcess(['git', 'commit', '-am', message], False, repo, 'commit')
+
+def checkLastCommit(path):
+    p = runSubProcess(['git', 'log', '--pretty=format:"%ad"', '-1'], False, '', 'checkout', stdout=subprocess.PIPE, universal_newlines=True)
+    out, err = p.communicate()
+    date = out.replace('"','')
+    date_object = datetime.strptime(date, '%a %b %d %H:%M:%S %Y %z')
+    print(date_object)
+    print(dateLimit)
+    return date_object > dateLimit
 
 def commentSysOut(path):
     textToSearch = "System.out"
@@ -194,8 +207,8 @@ def generateSources(path):
     runSubProcess(['mvn', 'clean', 'install', '-Pgenerate-from-wsdl', '-q', '-f', pomPath], True, pomPath, 'generateSources')
     runSubProcess(['git', 'add', '--force', '.'], False, path, 'add')
 
-def runSubProcess(command, shell, path, stage, stdout=None):
-    process = subprocess.Popen(command, shell=shell, stdout=stdout)
+def runSubProcess(command, shell, path, stage, stdout=None, universal_newlines=False):
+    process = subprocess.Popen(command, shell=shell, stdout=stdout, universal_newlines=universal_newlines)
     process.wait()
     if process.returncode != 0:
         externalError(process, path, stage)
@@ -224,63 +237,81 @@ def build(path):
 def releaseGeneric(svnPath, coPath):
     print(coPath)
     checkOut(svnPath, coPath)
-    commentSysOut(coPath)
-    nextPomVersion = updatePoms(coPath)
-    return nextPomVersion
+    if checkLastCommit(coPath):
+        commentSysOut(coPath)
+        nextPomVersion = updatePoms(coPath)
+        return nextPomVersion
+    else:
+        return 'break'
 
 def releaseModel(module):
     repoPath = '%s%s-MODEL.git' % (gitHubBase, module)
     coPath = r'%s/%s/models/%s' % (checkOutRoot, release, module)
-    releaseGeneric(repoPath, coPath)
-    generateSources(coPath)
-    return coPath
+    if releaseGeneric(repoPath, coPath) != 'break':
+        generateSources(coPath)
+        return coPath
+    else:
+        return 'break'
 
 def releaseLibs(module):
     repoPath = '%s%s.git' % (gitHubBase, module)
     coPath = r'%s/%s/libraries/%s' % (checkOutRoot, release, module)
-    releaseGeneric(repoPath, coPath)
-    return coPath
+    if releaseGeneric(repoPath, coPath) != 'break':
+        return coPath
 
 def releaseApp(module):
     repoPath = '%s%s-APP.git' % (gitHubBase, module)
     coPath = r'%s/%s/apps/%s' % (checkOutRoot, release, module)
-    releaseGeneric(repoPath, coPath)
-    updateLogback(coPath, '/service/src/main/resources/logback.xml')
-    return coPath
+    if releaseGeneric(repoPath, coPath) != 'break':
+        updateLogback(coPath, '/service/src/main/resources/logback.xml')
+        return coPath
+    else:
+        return 'break'
 
 def releaseDB(module):
     repoPath = '%s%s-DB.git' % (gitHubBase, module)
     coPath = r'%s/%s/db/%s' % (checkOutRoot, release, module)
-    releaseGeneric(repoPath, coPath)
-    updateLogback(coPath, '/domain/src/main/resources/logback.xml')
-    return coPath
+    if releaseGeneric(repoPath, coPath) != 'break':
+        updateLogback(coPath, '/domain/src/main/resources/logback.xml')
+        return coPath
+    else:
+        return 'break'
 
 def releaseProxy(module):
     repoPath = '%s%s.git' % (gitHubBase, module)
     coPath = r'%s/%s/proxies/%s' % (checkOutRoot, release, module)
-    releaseGeneric(repoPath, coPath)
-    updateLogback(coPath, '/service/src/main/resources/logback.xml')
-    return coPath
+    if releaseGeneric(repoPath, coPath) != 'break':
+        updateLogback(coPath, '/service/src/main/resources/logback.xml')
+        return coPath
+    else:
+        return 'break'
 
 def releasePlugin(module):
     repoPath = '%s%s-PLUGIN.git' % (gitHubBase, module)
     coPath = r'%s/%s/plugins/%s' % (checkOutRoot, release, module)
-    releaseGeneric(repoPath, coPath)
-    updateLogback(coPath, '/service/src/main/resources/logback.xml')
-    return coPath
+    if releaseGeneric(repoPath, coPath) != 'break':
+        updateLogback(coPath, '/service/src/main/resources/logback.xml')
+        return coPath
+    else:
+        return 'break'
 
 def releaseRa(module):
     repoPath = '%s%s-RESOURCE-ADAPTER.git' % (gitHubBase, module)
     coPath = r'%s/%s/ra/%s' % (checkOutRoot, release, module)
-    releaseGeneric(repoPath, coPath)
-    return coPath
+    if releaseGeneric(repoPath, coPath) != 'break':
+        return coPath
+    else:
+        return 'break'
 
 def releaseFrontend(module):
     repoPath = '%s%s' % (gitHubBase, module)
     coPath = r'%s/%s/frontend/%s' % (checkOutRoot, release, module)
     nextPomVersion = releaseGeneric(repoPath, coPath)
-    updateJSONVersion(coPath, nextPomVersion)
-    return coPath
+    if nextPomVersion != 'break':
+        updateJSONVersion(coPath, nextPomVersion)
+        return coPath
+    else:
+        return 'break'
 
 def copy(paths):
     for subdir, dirs, files in os.walk(path):
@@ -324,12 +355,15 @@ for list in steps:
         if list == '8-frontend':
             coPath = releaseFrontend(module)
 
-        #if validateBuild:
-        #   build(coPath)
+        if coPath == 'break':
+            print("Last commit for " + currentStep + " was before current release cycle")
+            continue
+        if validateBuild:
+           build(coPath)
         print("coPath: " + coPath)
         commit(coPath, "Review by %s Build Dtos from model and change to releasebranch in poms" % (getpass.getuser()))
         releasePrepare(coPath)
         releasePerform(coPath)
 
-cleanUp()
+#cleanUp()
 print("Done! Run time: %s " % (time.time() - startTime))
