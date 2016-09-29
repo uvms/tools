@@ -227,7 +227,7 @@ def releasePerform(path):
     runSubProcess(['git', 'checkout', 'master'], False, path, 'chechout master')
     runSubProcess(['git', 'cherry-pick', '--strategy=recursive', '-X', 'theirs', release], False, path, 'cherry pick last')
     runSubProcess(['git', 'push', 'origin', '--delete', release], True, path, 'remove branch')
-    runSubProcess(['git', 'push', 'origin', 'master'], True, path, 'push')
+    runSubProcess(['git', 'push', 'origin', 'swe-dev'], True, path, 'push')
 
 def build(path):
     path = path + '/pom.xml'
