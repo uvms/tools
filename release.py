@@ -29,6 +29,7 @@ step = '1-models.AssetModule'
 currentStep = step
 validateBuild = False
 dateLimit = datetime.now(timezone.utc) - timedelta(days=21)
+branch = 'swe-dev'
 
 user = ''
 password = ''
@@ -36,11 +37,11 @@ password = ''
 gitHubBase = "https://%s:%s@github.com/UnionVMS/UVMS-" % (user, password)
 
 unorderedSteps = {
-    '1-models': ['AssetModule'], 'ConfigModule', 'AuditModule', 'ExchangeModule', 'RulesModule', 'MovementModule', 'MobileTerminalModule'],
+    '1-models': ['AssetModule', 'ConfigModule', 'AuditModule', 'ExchangeModule', 'RulesModule', 'MovementModule', 'MobileTerminalModule'],
     '2-libs': ['UVMSConfigLibrary', 'UVMSLongPollingLibrary', 'USM4UVMSLibrary'],
     '3-apps': ['ConfigModule', 'AssetModule', 'AuditModule', 'ExchangeModule', 'RulesModule', 'MovementModule', 'MobileTerminalModule'],
     '4-db': ['ConfigModule', 'AssetModule', 'AuditModule', 'ExchangeModule', 'RulesModule', 'MovementModule', 'MobileTerminalModule'],
-    '5-proxies': ['AssetModule-PROXY-EU', 'AssetModule-PROXY-HAV'],
+    '5-proxies': ['AssetModule-PROXY-EU', 'AssetModule-PROXY-HAV', 'AssetModule-PROXY-HAV-CACHE'],
     '6-ra': ['AIS'],
     '7-plugins': ['AIS', 'Email', 'FLUX', 'NAF', 'SiriusOne', 'SWAgencyEmail', 'TwoStage'],
     '8-frontend': ['Frontend']
@@ -58,6 +59,8 @@ for arg in sys.argv:
         validateBuild = True
     if arg.startswith('-d'):
         dateLimit = datetime.strptime(arg.replace('-d', '', 1) + ' +0000', '%y%m%d %z')
+    if arg.startswith('-b'):
+        branch = arg.replace('-b', '', 1)
 
 svnBranch = 'https://webgate.ec.europa.eu/CITnet/svn/UNIONVMS/branches/releases/%s' % (release)
 
@@ -86,7 +89,8 @@ def checkOut(repo, checkOutPath):
     os.chdir(checkOutPath)
     print('Checking out %s to %s' % (repo, checkOutPath))
     runSubProcess(['git', 'clone', repo, checkOutPath], False, '', 'checkout')
-    runSubProcess(['git', 'checkout', '-b', release], False, '', 'checkout')
+    runSubProcess(['git', 'fetch'], False, '', 'fetch')
+    runSubProcess(['git', 'checkout', '-b', release, 'origin/' + branch], False, '', 'checkout')
     print('Check out done')
 
 def commit(repo, message):
@@ -98,8 +102,7 @@ def checkLastCommit(path):
     out, err = p.communicate()
     date = out.replace('"','')
     date_object = datetime.strptime(date, '%a %b %d %H:%M:%S %Y %z')
-    print(date_object)
-    print(dateLimit)
+    print("%s > %s = %s" % (date_object, dateLimit, (date_object > dateLimit)))
     return date_object > dateLimit
 
 def commentSysOut(path):
@@ -224,10 +227,10 @@ def releasePerform(path):
     print('Performing release %s' % (path))
     runSubProcess(['mvn', 'release:perform', '-q', '-f', path], True, path, 'perform')
     runSubProcess(['git', 'stash'], False, path, 'stash changes')
-    runSubProcess(['git', 'checkout', 'master'], False, path, 'chechout master')
+    runSubProcess(['git', 'checkout', branch], False, path, 'chechout master')
     runSubProcess(['git', 'cherry-pick', '--strategy=recursive', '-X', 'theirs', release], False, path, 'cherry pick last')
     runSubProcess(['git', 'push', 'origin', '--delete', release], True, path, 'remove branch')
-    runSubProcess(['git', 'push', 'origin', 'master'], True, path, 'push')
+    runSubProcess(['git', 'push', 'origin', branch], True, path, 'push')
 
 def build(path):
     path = path + '/pom.xml'
@@ -240,6 +243,9 @@ def releaseGeneric(svnPath, coPath):
     if checkLastCommit(coPath):
         commentSysOut(coPath)
         nextPomVersion = updatePoms(coPath)
+        releaseFile = r'%s/%s/%s' % (checkOutRoot, release, 'releases.txt')
+        with open(releaseFile, "a") as myfile:
+            myfile.write("Releasing: " + svnPath + "\t" + nextPomVersion + "\n")
         return nextPomVersion
     else:
         return 'break'
