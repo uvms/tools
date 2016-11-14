@@ -90,6 +90,17 @@ def checkOut(repo, checkOutPath):
     print('Checking out %s to %s' % (repo, checkOutPath))
     runSubProcess(['git', 'clone', repo, checkOutPath], False, '', 'checkout')
     runSubProcess(['git', 'fetch'], False, '', 'fetch')
+    runSubProcess(['git', 'checkout', branch], False, '', 'checkout')
+    print('Check out done')
+
+def checkOutModel(repo, checkOutPath):
+    if os.path.exists(checkOutPath):
+        shutil.rmtree(checkOutPath, onerror=del_rw)
+    os.makedirs(checkOutPath)
+    os.chdir(checkOutPath)
+    print('Checking out %s to %s' % (repo, checkOutPath))
+    runSubProcess(['git', 'clone', repo, checkOutPath], False, '', 'checkout')
+    runSubProcess(['git', 'fetch'], False, '', 'fetch')
     runSubProcess(['git', 'checkout', '-b', release, 'origin/' + branch], False, '', 'checkout')
     print('Check out done')
 
@@ -222,15 +233,16 @@ def releasePrepare(path):
     print('Preparing release %s' % (path))
     runSubProcess(['mvn', 'release:prepare', '-q', '-f', path, '-B'], True, path, 'prepare')
 
-def releasePerform(path):
+def releasePerform(path, releaseModel = False):
     path = path + '/pom.xml'
     print('Performing release %s' % (path))
     runSubProcess(['mvn', 'release:perform', '-q', '-f', path], True, path, 'perform')
-    runSubProcess(['git', 'stash'], False, path, 'stash changes')
-    runSubProcess(['git', 'checkout', branch], False, path, 'chechout master')
-    runSubProcess(['git', 'cherry-pick', '--strategy=recursive', '-X', 'theirs', release], False, path, 'cherry pick last')
-    runSubProcess(['git', 'push', 'origin', '--delete', release], True, path, 'remove branch')
-    runSubProcess(['git', 'push', 'origin', branch], True, path, 'push')
+    if releaseModel:
+        runSubProcess(['git', 'stash'], False, path, 'stash changes')
+        runSubProcess(['git', 'checkout', branch], False, path, 'checkout master')
+        runSubProcess(['git', 'cherry-pick', '--strategy=recursive', '-X', 'theirs', release], False, path, 'cherry pick last')
+        runSubProcess(['git', 'push', 'origin', '--delete', release], True, path, 'remove branch')
+        runSubProcess(['git', 'push', 'origin', branch], True, path, 'push')
 
 def build(path):
     path = path + '/pom.xml'
@@ -253,7 +265,14 @@ def releaseGeneric(svnPath, coPath):
 def releaseModel(module):
     repoPath = '%s%s-MODEL.git' % (gitHubBase, module)
     coPath = r'%s/%s/models/%s' % (checkOutRoot, release, module)
-    if releaseGeneric(repoPath, coPath) != 'break':
+
+    checkOutModel(repoPath, coPath)
+    if checkLastCommit(coPath):
+        commentSysOut(coPath)
+        nextPomVersion = updatePoms(coPath)
+        releaseFile = r'%s/%s/%s' % (checkOutRoot, release, 'releases.txt')
+        with open(releaseFile, "a") as myfile:
+            myfile.write("Releasing: " + repoPath + "\t" + nextPomVersion + "\n")
         generateSources(coPath)
         return coPath
     else:
@@ -264,6 +283,8 @@ def releaseLibs(module):
     coPath = r'%s/%s/libraries/%s' % (checkOutRoot, release, module)
     if releaseGeneric(repoPath, coPath) != 'break':
         return coPath
+    else:
+        return 'break'
 
 def releaseApp(module):
     repoPath = '%s%s-APP.git' % (gitHubBase, module)
@@ -369,7 +390,7 @@ for list in steps:
         print("coPath: " + coPath)
         commit(coPath, "Review by %s Build Dtos from model and change to releasebranch in poms" % (getpass.getuser()))
         releasePrepare(coPath)
-        releasePerform(coPath)
+        releasePerform(coPath, list == '1-models')
 
 #cleanUp()
 print("Done! Run time: %s " % (time.time() - startTime))
