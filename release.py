@@ -283,7 +283,7 @@ def releaseGeneric(svnPath, coPath, otherBranch = ''):
         with open(releaseFile, "a") as myfile:
             myfile.write("Releasing: " + svnPath + "\t" + nextPomVersion + "\n")
         return nextPomVersion
-    else://
+    else:
         return 'break'
 
 def releaseModel(module):
