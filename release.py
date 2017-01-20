@@ -242,6 +242,7 @@ def generateSources(path):
     print("Generating from WSDL")
     pomPath = path + '/pom.xml'
     runSubProcess(['mvn', 'clean', 'install', '-Pgenerate-from-wsdl', '-q', '-f', pomPath], True, pomPath, 'generateSources')
+    runSubProcess(['mvn', 'install', '-Pgenerate-from-wsdl', '-Pxmlgregoriancalendar', '-q', '-f', pomPath], True, pomPath, 'generateSources')
     runSubProcess(['git', 'add', '--force', '.'], False, path, 'add')
 
 def runSubProcess(command, shell, path, stage, stdout=None, universal_newlines=False):
@@ -282,7 +283,7 @@ def releaseGeneric(svnPath, coPath, otherBranch = ''):
         with open(releaseFile, "a") as myfile:
             myfile.write("Releasing: " + svnPath + "\t" + nextPomVersion + "\n")
         return nextPomVersion
-    else:
+    else://
         return 'break'
 
 def releaseModel(module):
