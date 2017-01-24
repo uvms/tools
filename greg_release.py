@@ -14,19 +14,17 @@ from datetime import timezone
 from collections import OrderedDict
 startTime = time.time()
 
-release = 'uvms-3.0.3-C3PO'
-checkOutRoot = ""
-#checkOutRoot = "/Users/andreasw/Code/hav/release"
-tempDevDir = ''
-#tempDevDir = '/Users/andreasw/Code/hav/release/temp-dev'
-step = '7-plugins.SWAgencyEmail'
+release = 'uvms-3.0.2-GREGORIAN'
+checkOutRoot = "/Users/andreasw/Code/hav/release"
+tempDevDir = '/Users/andreasw/Code/hav/release/temp-dev'
+step = '1-models.MovementModule'
 currentStep = step
 validateBuild = False
 dateLimit = datetime.now(timezone.utc) - timedelta(days=21)
 branch = 'dev'
 
-user = ''
-password = ''
+user = 'ebrygg'
+password = 'EvoW4000'
 dockerUser = 'focus-docker'
 dockerPassword = 'docker'
 
@@ -39,32 +37,7 @@ gitHubBase = "https://%s:%s@github.com/UnionVMS/UVMS-" % (user, password)
 
 unorderedSteps = {
     #'1-models': ['ConfigModule', 'RulesModule', 'ExchangeModule', 'MovementModule', 'AssetModule', 'AuditModule', 'MobileTerminalModule'],
-    #'2-libs': ['UVMSTestLibrary', 'UVMSCommonsLibrary', 'UVMSLongPollingLibrary', 'USM4UVMSLibrary', 'UVMSConfigLibrary'],
-    #'3-apps': ['ConfigModule', 'AssetModule', 'AuditModule', 'ExchangeModule', 'RulesModule', 'MovementModule', 'MobileTerminalModule'],
-    #'4-db': ['ConfigModule', 'AssetModule', 'AuditModule', 'ExchangeModule', 'RulesModule', 'MovementModule', 'MobileTerminalModule'],
-    #'5-proxies': ['AssetModule-PROXY-EU', 'AssetModule-PROXY-HAV', 'AssetModule-PROXY-HAV-CACHE'],
-    #'6-ra': ['AIS'], // Skall denna va efter plugins???
-    #'7-plugins': ['AIS', 'Email', 'FLUX', 'NAF', 'SiriusOne', 'SWAgencyEmail', 'TwoStage'],
-    #'8-frontend': ['Frontend'],
-    #'9-docker': ['release']
-
-     #'1-models': ['ConfigModule', 'RulesModule', 'ExchangeModule', 'MovementModule', 'AssetModule', 'AuditModule', 'MobileTerminalModule'],
-     #'2-libs': ['UVMSTestLibrary', 'UVMSCommonsLibrary', 'UVMSLongPollingLibrary', 'USM4UVMSLibrary', 'UVMSConfigLibrary'],
-     #'3-apps': ['ConfigModule', 'AssetModule', 'AuditModule', 'ExchangeModule', 'MovementModule', 'MobileTerminalModule'],
-     #'4-db': ['ConfigModule', 'AssetModule', 'AuditModule', 'ExchangeModule', 'MovementModule', 'MobileTerminalModule'],
-     #'5-proxies': ['AssetModule-PROXY-EU'],
-    # '6-ra': ['AIS'],
-     #'7-plugins': ['AIS', 'Email', 'FLUX', 'NAF', 'SiriusOne', 'SWAgencyEmail', 'TwoStage'],
-    # '8-frontend': ['Frontend'],
-    # '9-docker': ['release']
-
-    # !!!!!'3-apps': ['RulesModule'],
-    # !!!!!'4-db': ['RulesModule'],
-    # !!!!'5-proxies': ['AssetModule-PROXY-HAV','AssetModule-PROXY-HAV-CACHE'],
-    #'7-plugins': ['SWAgencyEmail'],infra-client:jar:1.0.0 is missing,common-client-v2:jar:2.0.4,hav-common-ejb:jar:1.0.0
-    # '8-frontend': ['Frontend'],
-    # '9-docker': ['release']
-
+    '1-models': ['MovementModule'],
 }
 steps = OrderedDict(sorted(unorderedSteps.items(), key=lambda t: t[0]))
 
@@ -122,20 +95,6 @@ def cleanUp():
     if os.path.exists(coPath):
         shutil.rmtree(coPath, onerror=del_rw)
 
-def checkOut(repo, checkOutPath, otherBranch=''):
-    if os.path.exists(checkOutPath):
-        shutil.rmtree(checkOutPath, onerror=del_rw)
-    os.makedirs(checkOutPath)
-    os.chdir(checkOutPath)
-    print('Checking out %s to %s' % (repo, checkOutPath))
-    runSubProcess(['git', 'clone', repo, checkOutPath], False, '', 'checkout')
-    runSubProcess(['git', 'fetch'], False, '', 'fetch')
-    if otherBranch == '':
-        runSubProcess(['git', 'checkout', branch], False, '', 'checkout')
-    else:
-        runSubProcess(['git', 'checkout', otherBranch], False, '', 'checkout')
-    print('Check out done')
-
 def checkOutModel(repo, checkOutPath):
     if os.path.exists(checkOutPath):
         shutil.rmtree(checkOutPath, onerror=del_rw)
@@ -158,22 +117,6 @@ def checkLastCommit(path):
     date_object = datetime.strptime(date, '%a %b %d %H:%M:%S %Y %z')
     print("%s > %s = %s" % (date_object, dateLimit, (date_object > dateLimit)))
     return date_object > dateLimit
-
-#
-#def commentSysOut(path):
-#    textToSearch = "System.out"
-#    textToReplace = "//System.out"
-#    print("Replacing sysouts in %s" % (path))
-#    for subdir, dirs, files in os.walk(path):
-#        for file in files:
-#            if file.endswith('.java'):
-#                fileToSearch = os.path.join(subdir, file)
-#                with fileinput.FileInput(fileToSearch, inplace=True) as file:
-#                    for line in file:
-#                        print(line.replace(textToReplace, textToSearch), end='')
-#                with fileinput.FileInput(fileToSearch, inplace=True) as file:
-#                    for line in file:
-#                        print(line.replace(textToSearch, textToReplace), end='')
 
 def updatePoms(path):
     print("Updating poms")
@@ -262,8 +205,7 @@ def updateLogback(path, logbackLocation):
 def generateSources(path):
     print("Generating from WSDL")
     pomPath = path + '/pom.xml'
-    #runSubProcess(['mvn', 'clean', 'install', '-Pgenerate-from-wsdl', '-q', '-f', pomPath], False, pomPath, 'generateSources')
-    runSubProcess(['mvn', 'install', '-Pgenerate-from-wsdl', '-Pxmlgregoriancalendar', '-q', '-f', pomPath], False, pomPath, 'generateSources')
+    runSubProcess(['mvn', 'clean', 'install', '-Pgenerate-from-wsdl', '-Pxmlgregoriancalendar', '-f', pomPath], False, pomPath, 'generateSources')
     runSubProcess(['git', 'add', '--force', '.'], False, path, 'add')
 
 def runSubProcess(command, shell, path, stage, stdout=None, universal_newlines=False):
@@ -295,19 +237,6 @@ def build(path):
     print('Building module %s' % (path))
     runSubProcess(['mvn', 'clean', 'package', '-q', '-f', path], False, path, 'build')
 
-def releaseGeneric(svnPath, coPath, otherBranch = ''):
-    print(coPath)
-    checkOut(svnPath, coPath, otherBranch)
-    if checkLastCommit(coPath):
-        #commentSysOut(coPath)
-        nextPomVersion = updatePoms(coPath)
-        releaseFile = r'%s/%s/%s' % (checkOutRoot, release, 'releases.txt')
-        with open(releaseFile, "a") as myfile:
-            myfile.write("Releasing: " + svnPath + "\t" + nextPomVersion + "\n")
-        return nextPomVersion
-    else:
-        return 'break'
-
 def releaseModel(module):
     repoPath = '%s%s-MODEL.git' % (gitHubBase, module)
     coPath = r'%s/%s/models/%s' % (checkOutRoot, release, module)
@@ -323,100 +252,6 @@ def releaseModel(module):
         return coPath
     else:
         return 'break'
-
-def releaseLibs(module):
-    repoPath = '%s%s.git' % (gitHubBase, module)
-    coPath = r'%s/%s/libraries/%s' % (checkOutRoot, release, module)
-    if releaseGeneric(repoPath, coPath) != 'break':
-        return coPath
-    else:
-        return 'break'
-
-def releaseApp(module):
-    repoPath = '%s%s-APP.git' % (gitHubBase, module)
-    coPath = r'%s/%s/apps/%s' % (checkOutRoot, release, module)
-    if releaseGeneric(repoPath, coPath) != 'break':
-        updateLogback(coPath, '/service/src/main/resources/logback.xml')
-        return coPath
-    else:
-        return 'break'
-
-def releaseDB(module):
-    repoPath = '%s%s-DB.git' % (gitHubBase, module)
-    coPath = r'%s/%s/db/%s' % (checkOutRoot, release, module)
-    if releaseGeneric(repoPath, coPath) != 'break':
-        updateLogback(coPath, '/domain/src/main/resources/logback.xml')
-        return coPath
-    else:
-        return 'break'
-
-def releaseProxy(module):
-    repoPath = '%s%s.git' % (gitHubBase, module)
-    coPath = r'%s/%s/proxies/%s' % (checkOutRoot, release, module)
-    if releaseGeneric(repoPath, coPath) != 'break':
-        updateLogback(coPath, '/service/src/main/resources/logback.xml')
-        return coPath
-    else:
-        return 'break'
-
-def releasePlugin(module):
-    repoPath = '%s%s-PLUGIN.git' % (gitHubBase, module)
-    coPath = r'%s/%s/plugins/%s' % (checkOutRoot, release, module)
-    if releaseGeneric(repoPath, coPath) != 'break':
-        updateLogback(coPath, '/service/src/main/resources/logback.xml')
-        return coPath
-    else:
-        return 'break'
-
-def releaseRa(module):
-    repoPath = '%s%s-RESOURCE-ADAPTER.git' % (gitHubBase, module)
-    coPath = r'%s/%s/ra/%s' % (checkOutRoot, release, module)
-    if releaseGeneric(repoPath, coPath) != 'break':
-        return coPath
-    else:
-        return 'break'
-
-def releaseFrontend(module):
-    repoPath = '%s%s' % (gitHubBase, module)
-    coPath = r'%s/%s/frontend/%s' % (checkOutRoot, release, module)
-    nextPomVersion = releaseGeneric(repoPath, coPath)
-    if nextPomVersion != 'break':
-        updateJSONVersion(coPath, nextPomVersion)
-        return coPath
-    else:
-        return 'break'
-
-def releaseDocker(module):
-    if dockerVersion == '':
-        print("No version set for Docker images, will not release them.")
-        return 'break'
-    repoPath = '%sDocker.git' % (gitHubBase)
-    coPath = r'%s/%s/Docker/%s' % (checkOutRoot, release, module)
-    checkOut(repoPath, coPath, 'master')
-    runSubProcess(['docker', 'login', '-u', dockerUser, '-p', dockerPassword, dockerPushTo], True, coPath, 'pull postgres-base')
-    runSubProcess(['docker', 'pull', '%suvms/postgres:9.3' % (dockerPullFrom)], True, coPath, 'pull postgres')
-    runSubProcess(['docker', 'build', '-t', '%suvms/postgres-release:%s' % (dockerPushTo, dockerVersion), '-t', '%suvms/postgres-release:latest' % (dockerPushTo), 'postgres-release'], True, coPath, 'build postgres-base')
-    runSubProcess(['docker', 'push', '%suvms/postgres-release:%s' % (dockerPushTo, dockerVersion)], True, coPath, 'push postgres-base:%s' % (dockerVersion))
-    runSubProcess(['docker', 'push', '%suvms/postgres-release:latest' % (dockerPushTo)], True, coPath, 'coPath postgres-base:latest')
-
-    runSubProcess(['docker', 'pull', '%suvms/wildfly:8.2.0' % (dockerPullFrom)], True, coPath, 'pull wildfly')
-    runSubProcess(['docker', 'build', '-t', '%suvms/wildfly-release:%s' % (dockerPushTo, dockerVersion), '-t', '%suvms/wildfly-release:latest' % (dockerPushTo), 'wildfly-release'], True, coPath, 'build wildfly-base')
-    runSubProcess(['docker', 'push', '%suvms/wildfly-release:%s' % (dockerPushTo, dockerVersion)], True, coPath, 'push wildfly-base:%s' % (dockerVersion))
-    runSubProcess(['docker', 'push', '%suvms/wildfly-release:latest' % (dockerPushTo)], True, coPath, 'push wildfly-base:latest')
-
-    runSubProcess(['git', 'tag', dockerVersion], True, coPath, 'tag release')
-    runSubProcess(['git', 'push', 'origin', dockerVersion], True, coPath, 'push tag')
-    return coPath
-
-def copy(paths):
-    for subdir, dirs, files in os.walk(path):
-        for file in files:
-            if file.endswith('pom.xml') and 'target' not in subdir:
-                fileToCopy = os.path.join(subdir, file)
-                target = fileToCopy.replace(release, tempDevDir)
-                print('%s -> %s' % (fileToCopy, target))
-                shutil.copy2(fileToCopy, target)
-
 
 skipSteps = True
 print("Start step: " + step)
@@ -435,22 +270,6 @@ for list in steps:
         coPath = ""
         if list == '1-models':
             coPath = releaseModel(module)
-        if list == '2-libs':
-            coPath = releaseLibs(module)
-        if list == '3-apps':
-            coPath = releaseApp(module)
-        if list == '4-db':
-            coPath = releaseDB(module)
-        if list == '5-proxies':
-            coPath = releaseProxy(module)
-        if list == '6-ra':
-            coPath = releaseRa(module)
-        if list == '7-plugins':
-            coPath = releasePlugin(module)
-        if list == '8-frontend':
-            coPath = releaseFrontend(module)
-        if list == '9-docker':
-            coPath = releaseDocker(module)
 
         if coPath == 'break':
             print("Last commit for " + currentStep + " was before current release cycle")
